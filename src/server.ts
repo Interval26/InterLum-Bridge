@@ -6,7 +6,7 @@ import { createAuthMiddleware } from "./auth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export function createApp(secret: string) {
+export function createApp(secret: string, options?: { enableCleanup?: boolean }) {
   const app = express();
   const rm = new RoomManager();
 
@@ -123,6 +123,14 @@ export function createApp(secret: string) {
     res.json({ ok: true });
   });
 
+  // Cleanup stale clients and empty rooms every 60 seconds (only in production)
+  if (options?.enableCleanup) {
+    setInterval(() => {
+      rm.cleanupStaleClients();
+      rm.cleanupRooms();
+    }, 60 * 1000);
+  }
+
   return app;
 }
 
@@ -142,7 +150,7 @@ if (isMain) {
   }
 
   const port = parseInt(process.env.PORT || "3000", 10);
-  const app = createApp(secret);
+  const app = createApp(secret, { enableCleanup: true });
 
   app.listen(port, "0.0.0.0", () => {
     console.log(`◆ Claude Chat Bridge running on http://0.0.0.0:${port}`);
