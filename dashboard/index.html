@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Chat Bridge</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Login Screen -->
+  <div id="login-screen">
+    <div class="login-box">
+      <h1>&#9670; Claude Chat Bridge</h1>
+      <p>Enter the bridge secret to access the dashboard.</p>
+      <input type="password" id="secret-input" placeholder="Bridge secret" autofocus>
+      <button id="login-btn">Connect</button>
+      <p id="login-error" class="error hidden"></p>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="hidden">
+    <div class="sidebar">
+      <div class="sidebar-header">&#9670; Chat Bridge</div>
+      <div id="room-list" class="room-list"></div>
+      <div class="sidebar-footer">
+        <div id="server-info">Rooms: 0</div>
+      </div>
+    </div>
+
+    <div class="main">
+      <!-- Empty state -->
+      <div id="empty-state" class="empty-state">
+        <p>Select a room from the sidebar to view the transcript.</p>
+      </div>
+
+      <!-- Room view -->
+      <div id="room-view" class="hidden">
+        <div class="room-header">
+          <div class="room-header-left">
+            <span id="room-code" class="room-code"></span>
+            <span id="room-stats" class="room-stats"></span>
+          </div>
+          <div id="room-badges" class="room-badges"></div>
+        </div>
+
+        <div id="transcript" class="transcript"></div>
+
+        <div class="controls">
+          <div class="controls-left">
+            Auto-scroll: <span id="autoscroll-toggle" class="toggle on">ON</span>
+          </div>
+          <div class="controls-right">
+            <button id="pause-btn" class="btn btn-warn">&#9208; Pause</button>
+            <button id="disconnect-btn" class="btn btn-danger">&#10005; Disconnect All</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
