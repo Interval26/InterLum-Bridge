@@ -48,7 +48,7 @@ claude-chat-bridge/
 
 - [ ] **Step 1: Initialize npm project**
 
-Run: `cd C:/Users/aiint/Downloads/claude-chat-bridge && npm init -y`
+Run: `cd claude-chat-bridge && npm init -y`
 
 - [ ] **Step 2: Install dependencies**
 
@@ -1850,7 +1850,7 @@ body {
 
 - [ ] **Step 3: Verify dashboard loads**
 
-Run: `cd C:/Users/aiint/Downloads/claude-chat-bridge && echo "BRIDGE_SECRET=test" > .env && npx tsx src/server.ts`
+Run: `cd claude-chat-bridge && echo "BRIDGE_SECRET=test" > .env && npx tsx src/server.ts`
 
 Open `http://localhost:3000` in browser — should see login screen with dark theme.
 Stop server with Ctrl+C.
