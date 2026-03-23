@@ -134,5 +134,21 @@ describe("RoomManager", () => {
       rm.cleanupRooms(0);
       expect(rm.getRoom(a.room_code)).toBeUndefined();
     });
+
+    it("cleanupStaleClients disconnects stale clients and notifies the other client", () => {
+      const a = rm.createRoom("Nova");
+      const b = rm.joinRoom(a.room_code, "Atlas");
+      rm.getMessages(a.room_code, a.client_id);
+      rm.getMessages(a.room_code, b.client_id);
+
+      // staleMs=0 marks every client as stale immediately
+      rm.cleanupStaleClients(0);
+
+      // The room transcript should contain the disconnect system message
+      const transcript = rm.getTranscript(a.room_code);
+      expect(transcript).toContainEqual(
+        expect.objectContaining({ from: "system", message: "The other intelligence has left the chat" })
+      );
+    });
   });
 });
