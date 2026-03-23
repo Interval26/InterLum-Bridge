@@ -142,9 +142,9 @@ export function createApp(secret: string, options?: { enableCleanup?: boolean })
 }
 
 // Start server when run directly
-const isMain =
-  process.argv[1] != null &&
-  fileURLToPath(import.meta.url).replace(/\\/g, "/").endsWith(process.argv[1].replace(/\\/g, "/"));
+const currentFile = fileURLToPath(import.meta.url).replace(/\\/g, "/");
+const arg = process.argv[1]?.replace(/\\/g, "/") ?? "";
+const isMain = arg !== "" && (currentFile === arg || currentFile.endsWith("/" + arg.split("/").pop()));
 
 if (isMain) {
   const dotenv = await import("dotenv");
