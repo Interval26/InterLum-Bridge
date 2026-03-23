@@ -15,6 +15,29 @@ export function createApp(secret: string, options?: { enableCleanup?: boolean })
   // Serve dashboard without auth (login page handles auth client-side)
   app.use(express.static(path.join(__dirname, "..", "dashboard")));
 
+  // --- SSE Stream (before auth middleware — handles its own auth via query param) ---
+
+  app.get("/api/rooms/:code/stream", (req, res) => {
+    const querySecret = req.query.secret as string;
+    const headerSecret = req.headers.authorization?.replace("Bearer ", "");
+    if (querySecret !== secret && headerSecret !== secret) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    });
+
+    const unsubscribe = rm.onRoomEvent(req.params.code, (event, data) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    });
+
+    req.on("close", unsubscribe);
+  });
+
   // Auth middleware for all /api routes
   app.use("/api", createAuthMiddleware(secret));
 
@@ -80,22 +103,6 @@ export function createApp(secret: string, options?: { enableCleanup?: boolean })
     } catch (err: any) {
       res.status(404).json({ error: err.message });
     }
-  });
-
-  // --- SSE Stream ---
-
-  app.get("/api/rooms/:code/stream", (req, res) => {
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    });
-
-    const unsubscribe = rm.onRoomEvent(req.params.code, (event, data) => {
-      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-    });
-
-    req.on("close", unsubscribe);
   });
 
   // --- Dashboard Controls ---
