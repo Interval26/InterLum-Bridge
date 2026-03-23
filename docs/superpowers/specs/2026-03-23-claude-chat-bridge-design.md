@@ -1,6 +1,6 @@
 # Claude Chat Bridge — Design Spec
 
-A local MCP server that enables two Claude Desktop instances to have freeform conversations with each other, with a browser-based monitoring dashboard for safety.
+An MCP server that enables two Claude Desktop instances (on the same machine or across a network) to have freeform conversations with each other, with a browser-based monitoring dashboard for safety.
 
 ## Problem
 
@@ -97,8 +97,8 @@ Claude A (Desktop) ↔ MCP Wrapper A ↔ Bridge Server ↔ MCP Wrapper B ↔ Cla
 
 ### Room Management
 
-- `POST /api/rooms` — create room. Body: `{name?}`. Returns: `{room_code, client_id}`
-- `POST /api/rooms/:code/join` — join room. Body: `{name?}`. Returns: `{client_id}`
+- `POST /api/rooms` — create room. Body: `{name?}`. Returns: `{room_code, client_id, role}`
+- `POST /api/rooms/:code/join` — join room. Body: `{name?}`. Returns: `{client_id, role}`
 - `POST /api/rooms/:code/disconnect` — leave room. Body: `{client_id}`
 
 ### Messaging
@@ -147,6 +147,48 @@ Terminal/log-style web interface served by the bridge server.
 
 The dashboard connects to the SSE stream for the selected room. New messages and status changes appear instantly without polling.
 
+## Networking
+
+### Same Machine
+
+Both Claude Desktop instances connect to `http://localhost:3000`. No extra setup needed.
+
+### Same Local Network
+
+The server binds to `0.0.0.0:3000` by default. The remote user sets `BRIDGE_URL` to the host machine's local IP (e.g., `http://192.168.1.50:3000`).
+
+### Remote (Over the Internet)
+
+Recommended: **Tailscale**. Both users join the same Tailnet. The server is reachable at the host's Tailscale IP or MagicDNS name (e.g., `http://my-pc.tailnet-name.ts.net:3000`). Tailscale provides WireGuard encryption, so the connection is private without us building TLS into the server.
+
+Alternative: ngrok or localtunnel for quick tunneling without Tailscale setup.
+
+## Authentication
+
+A shared secret (`BRIDGE_SECRET`) gates all access to the server.
+
+### Configuration
+
+The host creates a `.env` file in the project root:
+
+```
+BRIDGE_SECRET=my-shared-secret
+```
+
+Both users share this secret.
+
+### MCP Wrapper Auth
+
+The wrapper reads `BRIDGE_SECRET` from its environment (set in `claude_desktop_config.json`) and sends it as an `Authorization: Bearer <secret>` header on all API requests. The Claude never needs to know or enter the password — it's handled at the config level, set once.
+
+### Dashboard Auth
+
+The dashboard prompts for the password on every page load. No "remember me", no persistent cookies. The password is stored in a JS variable in memory and sent as an `Authorization: Bearer <secret>` header on all subsequent API/SSE requests. On refresh or tab close, the variable is lost and the password is required again.
+
+### API Enforcement
+
+All API endpoints (except `GET /` which serves the login page) require a valid `Authorization: Bearer <secret>` header. Requests without it receive a `401 Unauthorized` response.
+
 ## Claude Desktop Configuration
 
 Each user adds this to their `claude_desktop_config.json`:
@@ -158,14 +200,17 @@ Each user adds this to their `claude_desktop_config.json`:
       "command": "node",
       "args": ["/path/to/claude-chat-bridge/mcp-wrapper.js"],
       "env": {
-        "BRIDGE_URL": "http://localhost:3000"
+        "BRIDGE_URL": "http://localhost:3000",
+        "BRIDGE_SECRET": "my-shared-secret"
       }
     }
   }
 }
 ```
 
-The bridge server must be started first: `node server.js` (defaults to port 3000).
+For remote use, replace `BRIDGE_URL` with the host's Tailscale address or tunnel URL.
+
+The bridge server must be started first: `node server.js` (defaults to port 3000, binds to `0.0.0.0`).
 
 ## Error Handling
 
@@ -177,6 +222,7 @@ The bridge server must be started first: `node server.js` (defaults to port 3000
 | Message after disconnect | "The other intelligence has disconnected" |
 | Server unreachable | "Cannot reach bridge server. Is it running on {BRIDGE_URL}?" |
 | Stale connection (5+ min unpolled) | Server marks as disconnected, notifies other side |
+| Room cleanup | Rooms are removed from memory when both sides disconnect, or after 10 minutes with zero connected clients |
 
 ## Tech Stack
 
@@ -186,10 +232,19 @@ The bridge server must be started first: `node server.js` (defaults to port 3000
 - **Dashboard**: Vanilla HTML/CSS/JS (no framework)
 - **SSE**: Native EventSource for real-time dashboard updates
 
+## Distribution
+
+Published as an npm package: `claude-chat-bridge`
+
+- `npm install -g claude-chat-bridge` — installs both server and wrapper
+- `claude-chat-bridge serve` — starts the bridge server
+- The wrapper path comes from the global npm install location for use in `claude_desktop_config.json`
+
 ## Out of Scope
 
-- Authentication or encryption (local-only tool)
+- TLS/HTTPS (rely on Tailscale or tunnel services for encryption)
 - Persistent message storage (in-memory only, lost on server restart)
 - More than two participants per room
 - File or image sharing between Claudes
 - Rate limiting
+- User accounts (single shared secret is sufficient)
